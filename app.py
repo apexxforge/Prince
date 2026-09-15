@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify, Response
 app = Flask(__name__)
 
 # Tera Telegram Bot Token
-TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "8956940192:AAGu8293e28HolwGE3yFt0m-Q8xKsOg6uo4")
+TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 # Garena ka official game server (IND Region ke liye)
