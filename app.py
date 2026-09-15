@@ -7,7 +7,7 @@ from flask import Flask, request, jsonify
 app = Flask(__name__)
 
 # Tera Bot Token yahan ya Render environment variable mein hona chahiye
-TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "7946123456:AAH_EXAMPLE_TOKEN_HERE")
+TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "8956940192:AAGu8293e28HolwGE3yFt0m-Q8xKsOg6uo4")
 TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
 def decode_jwt_payload(token):
